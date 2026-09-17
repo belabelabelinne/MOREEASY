@@ -5,88 +5,124 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b1220">
   <title>Bluefit · Maria Monteiro</title>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
   <style>
-    :root { color-scheme: light; }
-    * { box-sizing: border-box; }
-    html, body { width:100%; height:100%; margin:0; overflow:hidden; background:#0b1220; }
-    #app { display:block; width:100%; height:100%; border:0; background:#f5f7fb; }
+    :root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color:#111827; }
+    * { box-sizing:border-box; }
+    html, body { width:100%; height:100%; margin:0; overflow:hidden; background:#eef3fb; }
+    #app { display:none; width:100%; height:100%; border:0; background:#f5f7fb; }
+    #app.ready { display:block; }
+    #secureLogin { position:fixed; inset:0; display:grid; place-items:center; padding:24px; background:radial-gradient(circle at 15% 10%,#2e6bff 0,#172554 42%,#080f1f 100%); z-index:10; }
+    .login-card { width:min(430px,100%); padding:38px; background:rgba(255,255,255,.97); border:1px solid rgba(255,255,255,.6); border-radius:24px; box-shadow:0 28px 90px rgba(0,0,0,.28); }
+    .brand-mark { width:54px; height:54px; display:grid; place-items:center; margin-bottom:20px; border-radius:16px; color:#fff; background:linear-gradient(135deg,#2563eb,#0ea5e9); font-size:25px; font-weight:900; box-shadow:0 12px 25px rgba(37,99,235,.28); }
+    h1 { margin:0; color:#101827; font-size:25px; letter-spacing:-.04em; }
+    .login-card p { margin:8px 0 26px; color:#64748b; line-height:1.5; }
+    .login-card label { display:block; margin:14px 0 6px; color:#475569; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; }
+    .login-card input { width:100%; min-height:46px; padding:12px 13px; border:1px solid #d7dfeb; border-radius:11px; outline:0; font:inherit; }
+    .login-card input:focus { border-color:#2563eb; box-shadow:0 0 0 4px rgba(37,99,235,.12); }
+    #loginButton { width:100%; min-height:48px; margin-top:20px; border:0; border-radius:11px; color:#fff; background:#2563eb; font:700 15px inherit; cursor:pointer; }
+    #loginButton:hover { background:#1d4ed8; }
+    #loginButton:disabled { opacity:.65; cursor:wait; }
+    #loginError { min-height:21px; margin-top:12px; color:#dc2626; font-size:13px; font-weight:700; }
+    .security-note { margin-top:18px!important; margin-bottom:0!important; font-size:12px; }
+    #loading { position:fixed; inset:0; display:grid; place-items:center; color:#fff; background:#0b1220; z-index:20; font-weight:700; }
+    #loading.hidden { display:none; }
   </style>
 </head>
 <body>
+  <div id="loading">Verificando acesso seguro…</div>
+  <section id="secureLogin" hidden>
+    <form class="login-card" id="loginForm">
+      <div class="brand-mark">B</div>
+      <h1>Bluefit Maria Monteiro</h1>
+      <p>Acesso individual da equipe de recepção.</p>
+      <label for="loginEmail">E-mail do funcionário</label>
+      <input id="loginEmail" type="email" autocomplete="username" placeholder="funcionario@empresa.com" required>
+      <label for="loginPassword">Senha</label>
+      <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Digite sua senha" required>
+      <button id="loginButton" type="submit">Entrar no sistema</button>
+      <div id="loginError" role="alert"></div>
+      <p class="security-note">Cada funcionário deve usar seu próprio usuário. A criação e a remoção de contas ficam no Firebase Authentication.</p>
+    </form>
+  </section>
   <iframe id="app" title="Atendimento Bluefit Maria Monteiro" src="Atendimento_Bluefit-5.html"></iframe>
+
   <script>
-    const desktopStyle = `
-      :root {
-        --bg:#f4f7fb; --surface:#fff; --ink:#111827; --muted:#64748b;
-        --primary:#2563eb; --primary-dark:#1d4ed8; --primary-soft:#eaf1ff;
-        --border:#e3e9f2; --radius-lg:20px; --radius-md:16px; --radius-sm:10px;
-        --shadow:0 10px 30px rgba(15,23,42,.07),0 1px 2px rgba(15,23,42,.04);
-      }
-      html,body { background:var(--bg)!important; }
-      body { padding-bottom:32px!important; font-size:14px!important; }
-      header { max-width:1440px; margin:0 auto; min-height:132px; padding:36px 46px 32px!important; border-radius:0 0 24px 24px!important; box-shadow:0 12px 34px rgba(29,79,216,.2); }
-      header h1 { font-size:1.9rem!important; letter-spacing:-.045em!important; }
-      header p { font-size:.9rem!important; }
-      .syncbar { max-width:1360px!important; margin:14px auto 0!important; padding:0 28px!important; }
-      .syncbar-inner { justify-content:space-between!important; padding:10px 16px!important; border-radius:12px!important; }
-      nav.main-tabs { max-width:1440px; margin:14px auto 0; padding:10px 28px!important; border:1px solid var(--border)!important; border-radius:16px 16px 0 0; box-shadow:var(--shadow)!important; position:sticky!important; }
-      nav.main-tabs button { padding:10px 16px!important; font-size:.82rem!important; }
-      nav.main-tabs button.active { box-shadow:0 6px 14px rgba(37,99,235,.22)!important; }
-      .container { max-width:1360px!important; padding:28px!important; }
-      .section-lead { font-size:.88rem!important; margin-bottom:20px!important; }
-      .stat-strip { margin:0 0 24px!important; }
-      .stat-card { max-width:460px; padding:20px!important; border-radius:16px!important; box-shadow:var(--shadow)!important; }
-      .card, details.qa-item, .turno-bar, .upload-zone { border-radius:16px!important; box-shadow:var(--shadow)!important; }
-      .card { padding:18px 20px!important; margin-bottom:14px!important; }
-      .card:hover { transform:translateY(-2px)!important; box-shadow:0 14px 32px rgba(15,23,42,.1)!important; }
-      .toolbar { margin-bottom:18px!important; }
-      input[type=text],input[type=date],input[type=tel],input[type=number],input[type=url],input[type=file],textarea,select { min-height:42px; border-color:#dce3ee!important; }
-      .btn { border-radius:10px!important; box-shadow:0 3px 10px rgba(29,79,216,.12); }
-      .modal-bg { background:rgba(15,23,42,.58)!important; }
-      .modal { border:1px solid var(--border); box-shadow:0 24px 70px rgba(15,23,42,.2); }
-      #homeBtn { display:none!important; }
-      #syncFab { bottom:20px!important; }
-      @media (min-width:1000px) { .view.active { max-width:1120px; margin:0 auto; } #view-avisos.active { max-width:100%; } }
-      @media (max-width:700px) { header { padding:24px 20px!important; } .syncbar { padding:0 12px!important; } nav.main-tabs { margin-top:10px; border-radius:0!important; padding:8px 10px!important; } .container { padding:16px!important; } }
-    `;
+    const firebaseConfig = {
+      apiKey: "AIzaSyBWmnyqKg6TBSGgC-3e_LaadjLQv4VSN9mU",
+      authDomain: "gymrecep.firebaseapp.com",
+      projectId: "gymrecep",
+      storageBucket: "gymrecep.firebasestorage.app",
+      messagingSenderId: "489381167071",
+      appId: "1:489381167071:web:f07b3e0e725eafb13dce6a"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
 
-    function normalizeLabels(doc) {
-      const replacements = [
-        [/segunda[- ]feira/gi, '2ª tentativa de contato'],
-        [/segunda tentativa/gi, '2ª tentativa de contato']
-      ];
-      const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
-      const nodes = [];
-      let node;
-      while ((node = walker.nextNode())) nodes.push(node);
-      nodes.forEach(textNode => {
-        let value = textNode.nodeValue;
-        replacements.forEach(([pattern, replacement]) => { value = value.replace(pattern, replacement); });
-        textNode.nodeValue = value;
-      });
-      doc.querySelectorAll('option, input, textarea, button').forEach(el => {
-        ['textContent','placeholder','value','title','ariaLabel'].forEach(prop => {
-          if (prop === 'textContent') return;
-          let value = el[prop];
-          if (!value) return;
-          replacements.forEach(([pattern, replacement]) => { value = value.replace(pattern, replacement); });
-          el[prop] = value;
-        });
-      });
+    const loading = document.getElementById('loading');
+    const login = document.getElementById('secureLogin');
+    const app = document.getElementById('app');
+    const form = document.getElementById('loginForm');
+    const button = document.getElementById('loginButton');
+    const error = document.getElementById('loginError');
+
+    function mostrarErro(mensagem) {
+      error.textContent = mensagem;
+      button.disabled = false;
     }
-
-    document.getElementById('app').addEventListener('load', function () {
+    function prepararAplicacao() {
       try {
-        const doc = this.contentDocument;
-        const style = doc.createElement('style');
-        style.id = 'desktop-modern-theme';
-        style.textContent = desktopStyle;
-        doc.head.appendChild(style);
-        doc.title = 'Bluefit · Maria Monteiro';
-        normalizeLabels(doc);
-        new MutationObserver(() => normalizeLabels(doc)).observe(doc.body, { childList:true, subtree:true, characterData:true });
-      } catch (error) {
-        console.error('Não foi possível aplicar o tema visual:', error);
+        const doc = app.contentDocument;
+        doc.body.classList.remove('bluefit-locked');
+        const antigaTela = doc.getElementById('bluefitLogin');
+        if (antigaTela) antigaTela.remove();
+        if (typeof app.contentWindow.iniciarApp === 'function') app.contentWindow.iniciarApp();
+        const header = doc.querySelector('header');
+        if (header && !doc.getElementById('logoutEmployee')) {
+          const sair = doc.createElement('button');
+          sair.id = 'logoutEmployee';
+          sair.className = 'btn small secondary';
+          sair.textContent = 'Sair';
+          sair.style.cssText = 'position:absolute;right:24px;top:24px;z-index:2;';
+          sair.addEventListener('click', () => auth.signOut());
+          header.appendChild(sair);
+        }
+      } catch (e) { console.error(e); }
+      app.classList.add('ready');
+    }
+    app.addEventListener('load', prepararAplicacao);
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      error.textContent = '';
+      button.disabled = true;
+      try {
+        await auth.signInWithEmailAndPassword(
+          document.getElementById('loginEmail').value.trim(),
+          document.getElementById('loginPassword').value
+        );
+      } catch (e) {
+        const mensagens = {
+          'auth/invalid-credential':'E-mail ou senha incorretos.',
+          'auth/user-not-found':'Usuário não encontrado.',
+          'auth/wrong-password':'E-mail ou senha incorretos.',
+          'auth/too-many-requests':'Muitas tentativas. Aguarde alguns minutos.',
+          'auth/invalid-email':'Digite um e-mail válido.'
+        };
+        mostrarErro(mensagens[e.code] || 'Não foi possível entrar. Tente novamente.');
+      }
+    });
+
+    auth.onAuthStateChanged((user) => {
+      loading.classList.add('hidden');
+      if (user && user.email) {
+        login.hidden = true;
+        prepararAplicacao();
+      } else {
+        app.classList.remove('ready');
+        login.hidden = false;
       }
     });
   </script>
