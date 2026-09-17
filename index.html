@@ -17,26 +17,28 @@
   <script>
     const desktopStyle = `
       :root {
-        --bg:#f5f7fb; --surface:#fff; --ink:#111827; --muted:#64748b;
+        --bg:#f4f7fb; --surface:#fff; --ink:#111827; --muted:#64748b;
         --primary:#2563eb; --primary-dark:#1d4ed8; --primary-soft:#eaf1ff;
-        --border:#e5eaf2; --radius-lg:20px; --radius-md:16px; --radius-sm:10px;
-        --shadow:0 8px 28px rgba(15,23,42,.07),0 1px 2px rgba(15,23,42,.04);
+        --border:#e3e9f2; --radius-lg:20px; --radius-md:16px; --radius-sm:10px;
+        --shadow:0 10px 30px rgba(15,23,42,.07),0 1px 2px rgba(15,23,42,.04);
       }
       html,body { background:var(--bg)!important; }
       body { padding-bottom:32px!important; font-size:14px!important; }
-      header { max-width:1440px; margin:0 auto; min-height:122px; padding:34px 42px 30px!important; border-radius:0 0 24px 24px!important; box-shadow:0 10px 30px rgba(29,79,216,.18); }
-      header h1 { font-size:1.8rem!important; letter-spacing:-.04em!important; }
+      header { max-width:1440px; margin:0 auto; min-height:132px; padding:36px 46px 32px!important; border-radius:0 0 24px 24px!important; box-shadow:0 12px 34px rgba(29,79,216,.2); }
+      header h1 { font-size:1.9rem!important; letter-spacing:-.045em!important; }
       header p { font-size:.9rem!important; }
       .syncbar { max-width:1360px!important; margin:14px auto 0!important; padding:0 28px!important; }
-      .syncbar-inner { justify-content:space-between!important; padding:9px 16px!important; border-radius:12px!important; }
+      .syncbar-inner { justify-content:space-between!important; padding:10px 16px!important; border-radius:12px!important; }
       nav.main-tabs { max-width:1440px; margin:14px auto 0; padding:10px 28px!important; border:1px solid var(--border)!important; border-radius:16px 16px 0 0; box-shadow:var(--shadow)!important; position:sticky!important; }
       nav.main-tabs button { padding:10px 16px!important; font-size:.82rem!important; }
+      nav.main-tabs button.active { box-shadow:0 6px 14px rgba(37,99,235,.22)!important; }
       .container { max-width:1360px!important; padding:28px!important; }
       .section-lead { font-size:.88rem!important; margin-bottom:20px!important; }
       .stat-strip { margin:0 0 24px!important; }
-      .stat-card { max-width:420px; padding:18px 20px!important; border-radius:16px!important; box-shadow:var(--shadow)!important; }
+      .stat-card { max-width:460px; padding:20px!important; border-radius:16px!important; box-shadow:var(--shadow)!important; }
       .card, details.qa-item, .turno-bar, .upload-zone { border-radius:16px!important; box-shadow:var(--shadow)!important; }
       .card { padding:18px 20px!important; margin-bottom:14px!important; }
+      .card:hover { transform:translateY(-2px)!important; box-shadow:0 14px 32px rgba(15,23,42,.1)!important; }
       .toolbar { margin-bottom:18px!important; }
       input[type=text],input[type=date],input[type=tel],input[type=number],input[type=url],input[type=file],textarea,select { min-height:42px; border-color:#dce3ee!important; }
       .btn { border-radius:10px!important; box-shadow:0 3px 10px rgba(29,79,216,.12); }
@@ -44,17 +46,34 @@
       .modal { border:1px solid var(--border); box-shadow:0 24px 70px rgba(15,23,42,.2); }
       #homeBtn { display:none!important; }
       #syncFab { bottom:20px!important; }
-      @media (min-width:1000px) {
-        .view.active { max-width:1120px; margin:0 auto; }
-        #view-avisos.active { max-width:100%; }
-      }
-      @media (max-width:700px) {
-        header { padding:24px 20px!important; }
-        .syncbar { padding:0 12px!important; }
-        nav.main-tabs { margin-top:10px; border-radius:0!important; padding:8px 10px!important; }
-        .container { padding:16px!important; }
-      }
+      @media (min-width:1000px) { .view.active { max-width:1120px; margin:0 auto; } #view-avisos.active { max-width:100%; } }
+      @media (max-width:700px) { header { padding:24px 20px!important; } .syncbar { padding:0 12px!important; } nav.main-tabs { margin-top:10px; border-radius:0!important; padding:8px 10px!important; } .container { padding:16px!important; } }
     `;
+
+    function normalizeLabels(doc) {
+      const replacements = [
+        [/segunda[- ]feira/gi, '2ª tentativa de contato'],
+        [/segunda tentativa/gi, '2ª tentativa de contato']
+      ];
+      const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+      const nodes = [];
+      let node;
+      while ((node = walker.nextNode())) nodes.push(node);
+      nodes.forEach(textNode => {
+        let value = textNode.nodeValue;
+        replacements.forEach(([pattern, replacement]) => { value = value.replace(pattern, replacement); });
+        textNode.nodeValue = value;
+      });
+      doc.querySelectorAll('option, input, textarea, button').forEach(el => {
+        ['textContent','placeholder','value','title','ariaLabel'].forEach(prop => {
+          if (prop === 'textContent') return;
+          let value = el[prop];
+          if (!value) return;
+          replacements.forEach(([pattern, replacement]) => { value = value.replace(pattern, replacement); });
+          el[prop] = value;
+        });
+      });
+    }
 
     document.getElementById('app').addEventListener('load', function () {
       try {
@@ -64,6 +83,8 @@
         style.textContent = desktopStyle;
         doc.head.appendChild(style);
         doc.title = 'Bluefit · Maria Monteiro';
+        normalizeLabels(doc);
+        new MutationObserver(() => normalizeLabels(doc)).observe(doc.body, { childList:true, subtree:true, characterData:true });
       } catch (error) {
         console.error('Não foi possível aplicar o tema visual:', error);
       }
