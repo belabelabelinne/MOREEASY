@@ -128,3 +128,324 @@
   </script>
 </body>
 </html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1220">
+  <title>Bluefit · Maria Monteiro</title>
+
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background: #0b1220;
+    }
+
+    #app {
+      display: none;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #f5f7fb;
+    }
+
+    #app.visible {
+      display: block;
+    }
+
+    #loginScreen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background:
+        radial-gradient(circle at top left, #2e6bff, transparent 38%),
+        linear-gradient(135deg, #0b1220, #172554);
+    }
+
+    .login-card {
+      width: min(430px, 100%);
+      padding: 34px;
+      background: white;
+      border-radius: 22px;
+      box-shadow: 0 25px 80px rgba(0, 0, 0, .28);
+    }
+
+    .logo {
+      width: 56px;
+      height: 56px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 18px;
+      border-radius: 16px;
+      color: white;
+      background: linear-gradient(135deg, #2563eb, #0ea5e9);
+      font-size: 26px;
+      font-weight: 800;
+    }
+
+    h1 {
+      margin: 0;
+      color: #101827;
+      font-size: 24px;
+    }
+
+    .description {
+      margin: 8px 0 24px;
+      color: #64748b;
+      line-height: 1.5;
+    }
+
+    label {
+      display: block;
+      margin: 14px 0 6px;
+      color: #475569;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    input {
+      width: 100%;
+      min-height: 46px;
+      padding: 12px;
+      border: 1px solid #d7dfeb;
+      border-radius: 10px;
+      font: inherit;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, .12);
+    }
+
+    #loginButton {
+      width: 100%;
+      min-height: 48px;
+      margin-top: 20px;
+      border: 0;
+      border-radius: 10px;
+      color: white;
+      background: #2563eb;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    #loginButton:disabled {
+      opacity: .65;
+      cursor: wait;
+    }
+
+    #loginError {
+      min-height: 22px;
+      margin-top: 14px;
+      color: #dc2626;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    .help {
+      margin: 18px 0 0;
+      color: #64748b;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+
+<body>
+
+  <main id="loginScreen">
+    <form class="login-card" id="loginForm">
+      <div class="logo">B</div>
+
+      <h1>Bluefit Maria Monteiro</h1>
+
+      <p class="description">
+        Entre com o e-mail e a senha cadastrados para o funcionário.
+      </p>
+
+      <label for="email">E-mail</label>
+      <input
+        id="email"
+        type="email"
+        autocomplete="username"
+        placeholder="funcionario@empresa.com"
+        required
+      >
+
+      <label for="password">Senha</label>
+      <input
+        id="password"
+        type="password"
+        autocomplete="current-password"
+        placeholder="Digite sua senha"
+        required
+      >
+
+      <button id="loginButton" type="submit">
+        Entrar no sistema
+      </button>
+
+      <div id="loginError" role="alert"></div>
+
+      <p class="help">
+        Se o acesso falhar, confirme se o usuário existe no Firebase
+        Authentication e se o login por e-mail e senha está ativado.
+      </p>
+    </form>
+  </main>
+
+  <iframe
+    id="app"
+    title="Atendimento Bluefit Maria Monteiro"
+    src="Atendimento_Bluefit-5.html">
+  </iframe>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBWmnyqKg6TBSGgC-3e_LaadjLQv4VSN9mU",
+      authDomain: "gymrecep.firebaseapp.com",
+      projectId: "gymrecep",
+      storageBucket: "gymrecep.firebasestorage.app",
+      messagingSenderId: "489381167071",
+      appId: "1:489381167071:web:f07b3e0e725eafb13dce6a",
+      measurementId: "G-1BLMRZ9FZN"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+
+    const auth = firebase.auth();
+
+    auth.setPersistence(
+      firebase.auth.Auth.Persistence.LOCAL
+    ).catch(function (error) {
+      console.warn("Não foi possível manter a sessão:", error);
+    });
+
+    const loginScreen = document.getElementById("loginScreen");
+    const loginForm = document.getElementById("loginForm");
+    const loginButton = document.getElementById("loginButton");
+    const loginError = document.getElementById("loginError");
+    const app = document.getElementById("app");
+
+    function mostrarErroFirebase(error) {
+      console.error("Erro completo do Firebase:", error);
+
+      const mensagens = {
+        "auth/invalid-credential":
+          "E-mail ou senha incorretos.",
+
+        "auth/user-not-found":
+          "Este funcionário não está cadastrado no Firebase.",
+
+        "auth/wrong-password":
+          "A senha está incorreta.",
+
+        "auth/invalid-email":
+          "O formato do e-mail é inválido.",
+
+        "auth/operation-not-allowed":
+          "O login por e-mail e senha está desativado no Firebase.",
+
+        "auth/unauthorized-domain":
+          "O domínio do GitHub Pages não está autorizado no Firebase.",
+
+        "auth/too-many-requests":
+          "Muitas tentativas. Aguarde alguns minutos.",
+
+        "auth/network-request-failed":
+          "Falha de conexão. Verifique a internet.",
+
+        "auth/user-disabled":
+          "Este usuário foi desativado no Firebase."
+      };
+
+      loginError.textContent =
+        mensagens[error.code] ||
+        "Erro Firebase: " + (error.code || "desconhecido");
+    }
+
+    function abrirSistema() {
+      loginScreen.style.display = "none";
+      app.classList.add("visible");
+
+      app.addEventListener("load", function () {
+        try {
+          const documento = app.contentDocument;
+
+          /*
+           * Remove a tela de senha antiga do arquivo interno.
+           * O login agora é feito pelo Firebase neste index.html.
+           */
+          const loginAntigo =
+            documento.getElementById("bluefitLogin");
+
+          if (loginAntigo) {
+            loginAntigo.remove();
+          }
+
+          documento.body.classList.remove("bluefit-locked");
+
+          /*
+           * Impede que a autenticação antiga esconda o sistema.
+           */
+          documento.body.style.display = "block";
+
+        } catch (error) {
+          console.error("Erro ao abrir o sistema interno:", error);
+        }
+      }, { once: true });
+    }
+
+    loginForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+
+      loginError.textContent = "";
+      loginButton.disabled = true;
+      loginButton.textContent = "Entrando...";
+
+      const email =
+        document.getElementById("email").value.trim();
+
+      const password =
+        document.getElementById("password").value;
+
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+      } catch (error) {
+        mostrarErroFirebase(error);
+        loginButton.disabled = false;
+        loginButton.textContent = "Entrar no sistema";
+      }
+    });
+
+    auth.onAuthStateChanged(function (user) {
+      if (user && user.email) {
+        abrirSistema();
+      } else {
+        loginScreen.style.display = "flex";
+        app.classList.remove("visible");
+      }
+    });
+  </script>
+
+</body>
+</html>
